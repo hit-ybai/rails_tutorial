@@ -1,12 +1,10 @@
-# store infos in file
-require 'csv'
+# store infos in mysql
 require 'mysql'
-require 'pry'
 
 # mysql config info
 MYSQL_HOST          = 'localhost'
 MYSQL_USER          = 'root'
-MYSQL_PASSWORD      = ''
+MYSQL_PASSWORD      = '123456'
 MYSQL_DATABASE_NAME = 'to_do_list'
 
 def database_connection
@@ -23,7 +21,7 @@ def database_connection
                                     `priority` ENUM('HIGH', 'LOW', 'NORMAL') NOT NULL DEFAULT 'NORMAL',
                                     `content` VARCHAR(128) NOT NULL,                                          
                                     `status` ENUM('FINISHED','DOING','TODO') NOT NULL DEFAULT 'TODO',
-                                    `created_at` TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00',
+                                    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                     PRIMARY KEY (`id`) )ENGINE=InnoDB DEFAULT CHARSET=utf8;")
 
@@ -36,21 +34,39 @@ end
 # close the databse connection when this program halt
 ObjectSpace.define_finalizer(self, proc { database_connection.close })
 
-def load_data
+def to_do_list_model
   to_do_list_items = []
-  query_result = database_connection.query("SELECT * FROM `to_do_list_item`;")
-  n_rows = query_result.num_rows
-  n_rows.times { to_do_list_items << query_result.fetch_row }
+  query_result     = database_connection.query("SELECT * FROM `to_do_list_item`;")
+  query_result.num_rows.times { to_do_list_items << query_result.fetch_row }
   to_do_list_items
 end
 
-def to_do_list_model
-  @to_do_list_model ||= load_data
+def new_to_do_list_item(message)
+  priority = message.shift
+  content  = message.join(' ')
+  database_connection.query("INSERT INTO `to_do_list_item` (priority, content) VALUES (\'#{priority.upcase}\', \'#{content}\');")
+end
+
+def update_to_do_list_item(message)
+  id, priority = message.shift(2)
+  content      = message.join(' ')
+  database_connection.query("UPDATE `to_do_list_item` SET `priority` = \'#{priority.upcase}\', `content` = \'#{content}\' WHERE `id` = \'#{id}\'")
+end
+
+def next_step_to_do_list_item(message)
+  id = message.shift
+  query_result = database_connection.query("SELECT `status` FROM `to_do_list_item` WHERE (`id` =  \'#{id}\');")
+  new_status = case query_result.fetch_row.shift
+    when 'TODO' then 'DOING'
+    when 'DOING' then 'FINISHED'
+    when 'FINISHED' then 'FINISHED'
+  end    
+  database_connection.query("UPDATE `to_do_list_item` SET `status` = \'#{new_status}\' WHERE `id` = \'#{id}\'" )
 end
 
 def to_do_list_items_view(to_do_list_items)
   puts "+----+-----------+----------+---------+-------------+-------------+"
-  puts "| id || priority || content || status || updated_at || created_at |"
+  puts "| id || priority || content || status || create_at  || updated_at |"
   puts "+----+-----------+----------+---------+-------------+-------------+"
   to_do_list_items.each_with_index do |to_do_list_item, index| 
     to_do_list_item.each { |attribute| print "| #{attribute} |" } 
@@ -63,13 +79,31 @@ def help_view
   puts "  'all'\n    [to show all to do list items]"
   puts "  'add priority content'\n    [to add a new to do list item]"
   puts "  'update id priority content'\n    [to update a to do list item]"
-  puts "  'find id'\n    [to show a specific to do list item]"
+  puts "  'next_step id'\n    [to update a to do list item status]"
   puts "  'help'\n    [to show a help message]"
+  puts "  'exit'\n    [good bye]"
+  puts "ALERT: ROBUSTNESS is NOT under my consideration in this demo!"
+end
+
+def get_view
+  print 'input: '
+  return gets
 end
 
 def index_controller
   to_do_list_items_view(to_do_list_model)
   help_view
+  while message = get_view.split(' ')
+    order = message.shift
+    case order.upcase
+    when 'ALL' then to_do_list_items_view(to_do_list_model)
+    when 'ADD' then new_to_do_list_item(message)
+    when 'NEXT_STEP' then next_step_to_do_list_item(message)
+    when 'UPDATE' then update_to_do_list_item(message)
+    when 'HELP' then help_view
+    when 'EXIT' then return
+    end
+  end
 end
 
 index_controller
