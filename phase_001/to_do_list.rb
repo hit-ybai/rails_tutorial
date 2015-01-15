@@ -4,7 +4,7 @@ require 'mysql'
 # mysql config info
 MYSQL_HOST          = 'localhost'
 MYSQL_USER          = 'root'
-MYSQL_PASSWORD      = '123456'
+MYSQL_PASSWORD      = ''
 MYSQL_DATABASE_NAME = 'to_do_list'
 
 def database_connection
