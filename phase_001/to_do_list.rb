@@ -41,26 +41,22 @@ def to_do_list_model
   to_do_list_items
 end
 
-def new_to_do_list_item(message)
-  priority = message.shift
-  content  = message.join(' ')
-  database_connection.query("INSERT INTO `to_do_list_item` (priority, content) VALUES (\'#{priority.upcase}\', \'#{content}\');")
+def new_to_do_list_item(opt = {})
+  database_connection.query("INSERT INTO `to_do_list_item` (priority, content) VALUES (\'#{opt[:priority].upcase}\', \'#{opt[:content]}\');")
 end
 
-def update_to_do_list_item(message)
-  id, priority = message.shift(2)
-  content      = message.join(' ')
-  database_connection.query("UPDATE `to_do_list_item` SET `priority` = \'#{priority.upcase}\', `content` = \'#{content}\' WHERE `id` = \'#{id}\'")
+def update_to_do_list_item(opt = {})
+  database_connection.query("UPDATE `to_do_list_item` SET `priority` = \'#{opt[:priority].upcase}\', `content` = \'#{opt[:content]}\' WHERE `id` = \'#{opt[:id]}\'")
 end
 
-def next_step_to_do_list_item(message)
-  id = message.shift
+def next_step_to_do_list_item(id)
   query_result = database_connection.query("SELECT `status` FROM `to_do_list_item` WHERE (`id` =  \'#{id}\');")
-  new_status = case query_result.fetch_row.shift
-    when 'TODO' then 'DOING'
-    when 'DOING' then 'FINISHED'
-    when 'FINISHED' then 'FINISHED'
-  end    
+  next_step_map = {
+    :TODO     => 'DOING',
+    :DOING    => 'FINISHED',
+    :FINISHED => 'FINISHED'
+  }
+  new_status = next_step_map[query_result.fetch_row.shift.to_sym]   
   database_connection.query("UPDATE `to_do_list_item` SET `status` = \'#{new_status}\' WHERE `id` = \'#{id}\'" )
 end
 
@@ -97,9 +93,19 @@ def index_controller
     order = message.shift
     case order.upcase
     when 'ALL' then to_do_list_items_view(to_do_list_model)
-    when 'ADD' then new_to_do_list_item(message)
-    when 'NEXT_STEP' then next_step_to_do_list_item(message)
-    when 'UPDATE' then update_to_do_list_item(message)
+    when 'ADD'
+      new_to_do_list_item({
+        :priority => message.shift,
+        :content  => message.join(' ')
+      })
+    when 'NEXT_STEP'
+      next_step_to_do_list_item(message.shift)
+    when 'UPDATE'
+      update_to_do_list_item({
+        :id       => message.shift,
+        :priority => message.shift,
+        :content  => message.join(' ')
+      })
     when 'HELP' then help_view
     when 'EXIT' then return
     end
