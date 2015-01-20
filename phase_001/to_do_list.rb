@@ -4,11 +4,11 @@ require 'mysql'
 # mysql config info
 MYSQL_HOST          = 'localhost'
 MYSQL_USER          = 'root'
-MYSQL_PASSWORD      = ''
+MYSQL_PASSWORD      = '123456'
 MYSQL_DATABASE_NAME = 'to_do_list'
 
 def database_connection
-# get or create the 'to_do_list' databse
+  # get or create the 'to_do_list' databse
   begin
     @database_connection ||= Mysql.new(MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE_NAME)
   rescue Exception => e
@@ -36,7 +36,7 @@ ObjectSpace.define_finalizer(self, proc { database_connection.close })
 
 def to_do_list_model
   to_do_list_items = []
-  query_result     = database_connection.query("SELECT * FROM `to_do_list_item`;")
+  query_result = database_connection.query('SELECT * FROM `to_do_list_item`;')
   query_result.num_rows.times { to_do_list_items << query_result.fetch_row }
   to_do_list_items
 end
@@ -50,46 +50,47 @@ def update_to_do_list_item(opt = {})
 end
 
 def next_step_to_do_list_item(id)
-  query_result = database_connection.query("SELECT `status` FROM `to_do_list_item` WHERE (`id` =  \'#{id}\');")
+  query_result =
+    database_connection.query("SELECT `status` FROM `to_do_list_item` WHERE (`id` =  \'#{id}\');")
   next_step_map = {
     :TODO     => 'DOING',
     :DOING    => 'FINISHED',
     :FINISHED => 'FINISHED'
   }
-  new_status = next_step_map[query_result.fetch_row.shift.to_sym]   
+  new_status = next_step_map[query_result.fetch_row.shift.to_sym]
   database_connection.query("UPDATE `to_do_list_item` SET `status` = \'#{new_status}\' WHERE `id` = \'#{id}\'" )
 end
 
 def to_do_list_items_view(to_do_list_items)
-  puts "+----+-----------+----------+---------+-------------+-------------+"
-  puts "| id || priority || content || status || create_at  || updated_at |"
-  puts "+----+-----------+----------+---------+-------------+-------------+"
-  to_do_list_items.each_with_index do |to_do_list_item, index| 
-    to_do_list_item.each { |attribute| print "| #{attribute} |" } 
+  puts '+----+-----------+----------+---------+-------------+-------------+'
+  puts '| id || priority || content || status || create_at  || updated_at |'
+  puts '+----+-----------+----------+---------+-------------+-------------+'
+  to_do_list_items.each do |to_do_list_item|
+    to_do_list_item.each { |attribute| print "| #{attribute} |" }
     puts "\n|-----------------------------------------------------------------|"
   end
 end
 
 def help_view
-  puts "You can input:"
+  puts 'You can input:'
   puts "  'all'\n    [to show all to do list items]"
   puts "  'add priority content'\n    [to add a new to do list item]"
   puts "  'update id priority content'\n    [to update a to do list item]"
   puts "  'next_step id'\n    [to update a to do list item status]"
   puts "  'help'\n    [to show a help message]"
   puts "  'exit'\n    [good bye]"
-  puts "ALERT: ROBUSTNESS is NOT under my consideration in this demo!"
+  puts 'ALERT: ROBUSTNESS is NOT under my consideration in this demo!'
 end
 
-def get_view
+def input_view
   print 'input: '
-  return gets
+  gets
 end
 
 def index_controller
   to_do_list_items_view(to_do_list_model)
   help_view
-  while message = get_view.split(' ')
+  while message = input_view.split(' ')
     order = message.shift
     case order.upcase
     when 'ALL' then to_do_list_items_view(to_do_list_model)
