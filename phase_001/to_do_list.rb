@@ -22,13 +22,14 @@ def database_connection
         `priority` ENUM('HIGH', 'LOW', 'NORMAL') NOT NULL DEFAULT 'NORMAL',
         `content` VARCHAR(128) NOT NULL,
         `status` ENUM('FINISHED','DOING','TODO') NOT NULL DEFAULT 'TODO',
-        `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `created_at` TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00',
         `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
           ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`) )ENGINE=InnoDB DEFAULT CHARSET=utf8;")
 
-      @database_connection.query("INSERT INTO `to_do_list_item` (content)
-        VALUES ('Hello World');")
+        @database_connection.query("INSERT INTO `to_do_list_item`
+          (content, created_at, updated_at)
+          VALUES ('Hello World', null, null);")
       return @database_connection
     end
   end
@@ -45,8 +46,9 @@ def to_do_list_model
 end
 
 def new_to_do_list_item(opt = {})
-  database_connection.query("INSERT INTO `to_do_list_item` (priority, content)
-    VALUES (\'#{opt[:priority].upcase}\', \'#{opt[:content]}\');")
+  database_connection.query("INSERT INTO `to_do_list_item`
+      (priority, content, created_at, updated_at)
+      VALUES(\'#{opt[:priority].upcase}\',\'#{opt[:content]}\', null, null);")
 end
 
 def update_to_do_list_item(opt = {})
