@@ -1,0 +1,4 @@
+source 'http://ruby.taobao.org'
+
+gem 'activerecord', '~> 4.2.0'
+gem 'mysql', '~> 2.9.1'
